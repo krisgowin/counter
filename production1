@@ -1,0 +1,49 @@
+rust
+use solana_program::{
+    account_info::{next_account_info, AccountInfo},
+    entrypoint,
+    entrypoint::ProgramResult,
+    msg,
+    program_error::ProgramError,
+    pubkey::Pubkey,
+};
+use spl_token::{
+    self,
+    state::Account as TokenAccount,
+};
+
+// Define the entry point to the program
+entrypoint!(process_instruction);
+
+// Main processing function
+fn process_instruction(
+    program_id: &Pubkey,      // Public key of the program
+    accounts: &[AccountInfo], // The accounts provided to the program
+    _instruction_data: &[u8], // Data passed to the program; could be the amount to increment
+) -> ProgramResult {
+    msg!("USDC Account Operation: Increment");
+
+    let account_info_iter = &mut accounts.iter();
+    let usdc_account = next_account_info(account_info_iter)?;
+
+    // Deserializing the USDC account to access and modify its data
+    let mut usdc_data = usdc_account.try_borrow_mut_data()?;
+    let mut token_account = TokenAccount::unpack(&usdc_data)?;
+
+    // Verify that the token account is owned by the SPL Token program
+    if token_account.owner != *program_id {
+        msg!("Error: Account does not belong to this program");
+        return Err(ProgramError::IllegalOwner);
+    }
+
+    // Increment the balance; for simplicity, we add 100 USDC
+    // Note: Real applications should handle amounts and scaling factors properly!
+    token_account.amount += 100;
+
+    // Packing the updated token account back into the account's data
+    TokenAccount::pack(token_account, &mut usdc_data)?;
+
+    msg!("USDC balance updated successfully");
+
+    Ok(())
+}
