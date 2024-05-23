@@ -1,0 +1,49 @@
+rust
+use solana_program::{
+    account_info::{next_account_info, AccountInfo},
+    entrypoint,
+    entrypoint::ProgramResult,
+    msg,
+    program_error::ProgramError,
+    pubkey::Pubkey,
+};
+
+// Define the entry point to the program
+entrypoint!(process_instruction);
+
+// The main processing function that is called whenever your program is invoked
+fn process_instruction(
+    program_id: &Pubkey,      // Public key of the program
+    accounts: &[AccountInfo], // The accounts provided to the program
+    _instruction_data: &[u8], // Data passed to the program; unused in this example
+) -> ProgramResult {
+    msg!("Hello, Solana!");
+
+    // Iterating through the accounts array to get the account that holds the state
+    let accounts_iter = &mut accounts.iter();
+    let counter_account = next_account_info(accounts_iter)?;
+
+    // Check if the account is writable
+    if !counter_account.is_writable {
+        return Err(ProgramError::InvalidAccountData);
+    }
+
+    // Deserialize the counter data from the account's data
+    let mut counter_data = counter_account.try_borrow_mut_data()?;
+    let mut counter: u32 = u32::from_le_bytes(
+        counter_data
+            .get(0..4)
+            .ok_or(ProgramError::InvalidAccountData)?
+            .try_into()
+            .expect("Slice with incorrect length"),
+    );
+
+    // Increment the counter
+    counter += 1;
+    msg!("Counter value incremented to {}", counter);
+
+    // Serialize the new counter value back into the account's data
+    *counter_data = counter.to_le_bytes();
+
+    Ok(())
+}
